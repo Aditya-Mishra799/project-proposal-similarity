@@ -1,0 +1,8 @@
+fastapi
+pymongo
+sentence-transformers
+uvicorn
+python-dotenv
+numpy
+python-multipart
+python-dotenv
