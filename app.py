@@ -35,7 +35,6 @@ def get_embedding(text: list):
 # Bulk add projects with embeddings
 @app.post("/bulk_add_projects/")
 def bulk_add_projects(  session_id: str = Form(...),  file: str = Form(...) ):
-    print(session_id)
     csv_reader = csv.reader(io.StringIO(file))  # ✅ Parse CSV from string
     next(csv_reader)  # Skip header
 
@@ -49,7 +48,6 @@ def bulk_add_projects(  session_id: str = Form(...),  file: str = Form(...) ):
             "abstract": abstract,
             "status": "accepted",  # By default, bulk added projects are accepted
             "sessionId": ObjectId(session_id),
-            "groupId": None,
             "embedding": embedding
         }
         projects_to_insert.append(project)
@@ -59,14 +57,13 @@ def bulk_add_projects(  session_id: str = Form(...),  file: str = Form(...) ):
 
 # Add a single project
 @app.post("/add_project/")
-def add_project(title: str, abstract: str, session_id: str, group_id: str = None):
+def add_project(title: str, abstract: str, session_id: str):
     embedding = get_embedding([title, abstract])
     project = {
         "title": title,
         "abstract": abstract,
         "status": "pending",  # Pending by default
         "sessionId": ObjectId(session_id),
-        "groupId": ObjectId(group_id) if group_id else None,
         "embedding": embedding
     }
     project_id = projects_collection.insert_one(project).inserted_id
