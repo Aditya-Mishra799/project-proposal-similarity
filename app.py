@@ -23,21 +23,17 @@ load_dotenv()
 mongodb_uri = os.getenv("MONGODB_URI")
 db_name = os.getenv("DATABASE_NAME")
 model_name = os.getenv("MODEL_NAME")
+allowed_origins = os.getenv("ALLOWED_ORIGINS").split(',')
 
 # Initialize FastAPI app
 app = FastAPI()
 
-# Allow CORS from specific origins
-origins = [
-    "http://localhost:3000",  # Example: Allowing localhost with port 3000
-    "https://myfrontenddomain.com",  # Example: A specific frontend domain
-]
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     # List of allowed origins (you can use '*' to allow all)
-    allow_origins=origins,
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],  # Allowed HTTP methods
     allow_headers=["X-Custom-Header", "Content-Type"],  # Allowed headers
