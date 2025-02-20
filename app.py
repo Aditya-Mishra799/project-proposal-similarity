@@ -17,6 +17,8 @@ class ProjectCreateRequest(BaseModel):
     abstract: str
     session_id: str
     creator_id: str
+
+
 class ProjectUpdateRequest(BaseModel):
     title: str
     abstract: str
@@ -50,6 +52,7 @@ model = SentenceTransformer(model_name)
 client = MongoClient(mongodb_uri)
 db = client[db_name]
 projects_collection = db["projects"]
+session_collection = db["sessions"]
 
 
 def bson_to_json(doc):
@@ -70,7 +73,7 @@ def get_embedding(text: list):
 async def bulk_add_projects(session_id: str = Form(...), file: UploadFile = File(...)):
     contents = await file.read()  # Read file content
     csv_reader = csv.reader(io.StringIO(
-        contents.decode("utf-8")))  # Convert to string
+        contents.decode("utf-8", errors="replace")))  # Convert to string
     next(csv_reader)  # Skip header
 
     projects_to_insert = []
@@ -104,11 +107,40 @@ def add_project(project: ProjectCreateRequest):
         project.session_id,
         project.creator_id
     )
+    session = session_collection.find_one({"_id": ObjectId(session_id)})
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
     embedding = get_embedding(title + abstract)
+    status = "pending"
+    threshold = session["threshold"]
+    if session["autoReject"]:
+        result = projects_collection.aggregate([
+            {"$vectorSearch": {
+                "queryVector": embedding,
+                "path": "embedding",
+                "numCandidates": 100,
+                "limit": 1,
+                "index": "embedding_index",
+                "metric": "cosine",
+                "filter": {
+                    "$and": [
+                        {"status": "accepted"},
+                        {"sessionId": ObjectId(session_id)},
+                    ]
+
+                }
+            }},
+            {"$project": {
+                "cosineSimilarity": {"$meta": "vectorSearchScore"}
+            }}
+        ])
+        result = [bson_to_json(doc) for doc in result]
+        if result and result[0]["cosineSimilarity"] > threshold/100:
+            status = "rejected"
     project = {
         "title": title,
         "abstract": abstract,
-        "status": "pending",  # Pending by default
+        "status": status,  # Pending by default
         "sessionId": ObjectId(session_id),
         "embedding": embedding,
         "creator": ObjectId(creator_id),
@@ -116,7 +148,6 @@ def add_project(project: ProjectCreateRequest):
         "updatedAt": datetime.utcnow(),
     }
     project_id = projects_collection.insert_one(project).inserted_id
-    print("inserted all records")
     return {"projectId": str(project_id)}
 
 # Update project title, abstract, and embedding
