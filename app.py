@@ -17,6 +17,10 @@ class ProjectCreateRequest(BaseModel):
     abstract: str
     session_id: str
     creator_id: str
+class ProjectUpdateRequest(BaseModel):
+    title: str
+    abstract: str
+    project_id: str
 
 
 load_dotenv()
@@ -118,8 +122,13 @@ def add_project(project: ProjectCreateRequest):
 # Update project title, abstract, and embedding
 
 
-@app.put("/update_project/{project_id}")
-def update_project(project_id: str, title: str, abstract: str):
+@app.put("/update_project")
+def update_project(project_req: ProjectUpdateRequest):
+    title, abstract, project_id = (
+        project_req.title,
+        project_req.abstract,
+        project_req.project_id,
+    )
     project = projects_collection.find_one({"_id": ObjectId(project_id)})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
