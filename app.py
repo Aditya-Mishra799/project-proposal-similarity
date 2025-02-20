@@ -110,6 +110,8 @@ def add_project(project: ProjectCreateRequest):
     session = session_collection.find_one({"_id": ObjectId(session_id)})
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+    if session["status"] != "active":
+        raise HTTPException(status_code=403, detail="Session is not active, please ask admin to activate.")
     embedding = get_embedding(title + abstract)
     status = "pending"
     threshold = session["threshold"]
